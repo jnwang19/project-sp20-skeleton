@@ -1,5 +1,6 @@
 import networkx as nx
 from networkx.algorithms import approximation
+from collections import deque
 import numpy as np
 from parse import read_input_file, write_output_file, read_output_file
 from utils import is_valid_network, average_pairwise_distance_fast
@@ -10,24 +11,29 @@ import random
 # global variables
 # dictionary that holds each id, input networkx.Graph
 INPUT_PATH = '../inputs/'
-OUTPUT_PATH = '../outputs/'
+OUTPUT_PATH = '../outputs2/'
 FINISHED_FILE_PATH = '../finished_files.txt'
+METHODS_PATH = '../methods.txt'
 
 inputs = {}
 # dictionary that holds id, score
 best_scores = {}
+best_methods = {}
+
 finished_files = set()
 
-def setup():
-    finished_file = open(FINISHED_FILE_PATH, 'w+')
+
+def setup(inputs, best_scores, best_methods, finished_files):
+    finished_file = open(FINISHED_FILE_PATH, 'r')
     for file in finished_file:
         finished_files.add(file)
     for filename in os.listdir(INPUT_PATH):
+        out_filename = filename.split('.')[0] + '.out'
         if filename not in finished_files:
             inputs[filename] = read_input_file(INPUT_PATH + filename)
-            if os.path.isfile(OUTPUT_PATH + filename):
-                output_graph = read_output_file(OUTPUT_PATH + filename, inputs[filename])
-                if output_graph.number_of_nodes == 1:
+            if os.path.isfile(OUTPUT_PATH + out_filename):
+                output_graph = read_output_file(OUTPUT_PATH + out_filename, inputs[filename])
+                if output_graph.number_of_nodes() == 1:
                     best_scores[filename] = 0
                 else:
                     best_scores[filename] = average_pairwise_distance_fast(output_graph)
@@ -44,17 +50,30 @@ def solve():
     """
 
     # TODO: your code here!
-    setup()
+    setup(inputs, best_scores, best_methods, finished_files)
+
     # run MST
+    # for id in inputs:
+    #     G = inputs[id]
+    #     mst(G.copy(), id)
+    #     mds(G.copy(), id)
+    
     for id in inputs:
         G = inputs[id]
-        mst(G.copy(), id)
-        mds(G.copy(), id)
-    # run everything else
-    while(True):
-        for id in inputs:
-            G = inputs[id].copy()
-            bfs(G, id)
+        #random_mds(G.copy(), id)
+        bfs(G.copy(), id)
+    
+    # write_finished_files()
+    write_best_methods()
+
+    # # run everything else
+    # while(True):
+    #   write_best_methods()
+    #     for id in inputs:
+    #         G = inputs[id]
+    #         bfs(G.copy(), id)
+    #         random_mds(G.copy(), id)
+         
 
 # in the very beginning: read all inputs and all outputs (store them in networkx.Graph)
 
@@ -76,35 +95,45 @@ def mst(G, id):
     # probabilites
     # if len(leaves) == num_nodes:
 
-    # T.remove_nodes_from(leaves)
+    T.remove_nodes_from(leaves)
     update_best_graph(T, id, 'mst')
 
 def mds(G, id):
     min_set = approximation.dominating_set.min_weighted_dominating_set(G)
     steiner_tree = approximation.steinertree.steiner_tree(G, min_set)
-    update_best_graph(steiner_tree, id, 'mds')
+    if steiner_tree.number_of_nodes() == 0 and steiner_tree.size() == 0: # steiner tree outputted empty graph
+        graph = nx.Graph()
+        graph.add_node(min_set.pop())
+        update_best_graph(graph, id, 'mds complete')
+    else:
+        update_best_graph(steiner_tree, id, 'mds')
 
 def random_mds(G, id):
     dom_set = []
-    edges = G.edges().copy()
+    edges = list(G.copy().edges())
     while edges:
         # Pick a random edge and random endpoint for that edge to add to dom_set
         edge = edges[np.random.randint(len(edges))]
         vertex = edge[np.random.randint(2)]
-        print(edge)
         dom_set.append(vertex)
         edges = [edge for edge in edges if (edge[0] != vertex and edge[1] != vertex)]
     steiner_tree = approximation.steinertree.steiner_tree(G, dom_set)
-    update_best_graph(steiner_tree, id, 'rand_mds')
+    if steiner_tree.number_of_nodes() == 0 and steiner_tree.size() == 0: # steiner tree outputted empty graph
+        graph = nx.Graph()
+        print(dom_set)
+        graph.add_node(dom_set.pop())
+        update_best_graph(graph, id, 'random mds complete')
+    else:
+        update_best_graph(steiner_tree, id, 'random mds')
 
 def bfs(G, id):
     tree = nx.Graph()
-    nodes = G.nodes
+    nodes = list(G.nodes)
     tree.add_nodes_from(nodes)
     visited = {i: False for i in nodes}
     source = np.random.choice(nodes, 1)[0]
 
-    queue = [] 
+    queue = deque()
     leaves = []
 
     # Mark the source node as visited and enqueue it 
@@ -113,48 +142,62 @@ def bfs(G, id):
 
     while queue: 
         # Dequeue a vertex from queue and print it 
-        s = queue.pop(0) 
+        s = queue.popleft() 
 
         # Get all adjacent vertices of the dequeued vertex s. If a adjacent has not been visited, then mark it visited and enqueue it 
-        neighbors = nx.classes.function.all_neighbors(G, s)
+        neighbors = list(G.neighbors(s))
         n = np.random.permutation(neighbors)
         children = 0
         for i in n: 
             if visited[i] == False: 
-                tree.add_edge(s, i)
+                tree.add_edge(s, i, weight = G[s][i]['weight'])
                 queue.append(i) 
                 visited[i] = True
                 children += 1
         if children == 0:
             leaves.append(s)
-    
-    tree.remove_nodes_from(leaves)
-    if tree.number_of_nodes() == len(leaves):
-        new_tree = null
-    update_best_graph(tree, id, 'bst')
+    if tree.number_of_nodes() == len(leaves) or tree.number_of_nodes() - 1 == len(leaves):
+        tree = nx.Graph()
+        tree.add_node(source)
+    else:
+        tree.remove_nodes_from(leaves)
+    update_best_graph(tree, id, 'bfs')
 
 # replaces the best graph if the current graph is better
 def update_best_graph(G, id, method):
 
     def write_best_graph():
-        write_output_file(G, OUTPUT_PATH + id)
+        filename = id.split('.')[0]
+        write_output_file(G, OUTPUT_PATH + filename + '.out')
         print(method)
 
-    if method.equals('bst'):
+    # if not is_valid_network(inputs[id], G):
+    #     print("ERROR: " + id + ' ' + method + ' ')
         
-    if not is_valid_network(inputs[id], G):
-        print("ERROR: " + id)
     if G.number_of_nodes() == 1: # put this in finished files
-        write_best_graph(G, id, method)
-        best_scores[id] = 0
-        finished_files.add(id)
-    elif G.number_of_nodes() == 0 and G.size() == 0: # put this in finished files
-        finished_files.add(id)
+        if id not in best_scores or (id in best_scores and best_scores[id] != 0):
+            write_best_graph()
+            best_scores[id] = 0
+            finished_files.add(id)
+            best_methods[id] = method
     else:
         current_score = average_pairwise_distance_fast(G)
         if current_score < best_scores[id]:
             write_best_graph()
             best_scores[id] = current_score
+            best_methods[id] = method
+    
+def write_best_methods():
+    methods_file = open(METHODS_PATH, 'w+')
+    for id in best_methods:
+        methods_file.write(id + ': ' + best_methods[id] + ' ' + str(best_scores[id]) + '\n')
+
+def write_finished_files():
+    f = open(FINISHED_FILE_PATH, 'w+')
+    for id in finished_files:
+        f.write(id + '\n')
+    f.close()
+
 
 # Have tree T- compute cost
 # Find all leaf nodes (if we pop a vertex, if no new vertices are added to the queue, it is a leaf)
