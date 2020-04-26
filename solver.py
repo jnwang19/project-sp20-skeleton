@@ -12,7 +12,7 @@ import random
 # dictionary that holds each id, input networkx.Graph
 INPUT_PATH = '../inputs/'
 OUTPUT_PATH = '../outputs/'
-FINISHED_FILE_PATH = '../finished_files.txt'
+FINISHED_FILE_PATH = 'finished_files.txt'
 METHODS_PATH = '../methods.txt'
 
 inputs = {}
@@ -58,12 +58,15 @@ def solve():
     #     mst(G.copy(), id)
     #     mds(G.copy(), id)
 
-    for id in inputs:
-        G = inputs[id]
-        random_mds(G.copy(), id)
-        bfs(G.copy(), id)
+    for i in range(1000):
+        print(i)
+        for id in inputs:
+            G = inputs[id]
+            #random_mds(G.copy(), id)
+            bfs(G.copy(), id)
+        #write_best_methods()
     
-    # write_finished_files()
+    #write_finished_files()
     write_best_methods()
 
     # # run everything else
@@ -172,10 +175,10 @@ def update_best_graph(G, id, method):
     def write_best_graph():
         filename = id.split('.')[0]
         write_output_file(G, OUTPUT_PATH + filename + '.out')
-        print(method)
+        print(method + ' ' + id)
 
-    if not is_valid_network(inputs[id], G):
-        print("ERROR: " + id + ' ' + method + ' ')
+    # if not is_valid_network(inputs[id], G):
+    #     print("ERROR: " + id + ' ' + method + ' ')
         
     if G.number_of_nodes() == 1: # put this in finished files
         if id not in finished_files:
