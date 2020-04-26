@@ -11,7 +11,7 @@ import random
 # global variables
 # dictionary that holds each id, input networkx.Graph
 INPUT_PATH = '../inputs/'
-OUTPUT_PATH = '../outputs2/'
+OUTPUT_PATH = '../outputs/'
 FINISHED_FILE_PATH = '../finished_files.txt'
 METHODS_PATH = '../methods.txt'
 
@@ -26,7 +26,7 @@ finished_files = set()
 def setup(inputs, best_scores, best_methods, finished_files):
     finished_file = open(FINISHED_FILE_PATH, 'r')
     for file in finished_file:
-        finished_files.add(file)
+        finished_files.add(file.split('\n')[0])
     for filename in os.listdir(INPUT_PATH):
         out_filename = filename.split('.')[0] + '.out'
         if filename not in finished_files:
@@ -57,10 +57,10 @@ def solve():
     #     G = inputs[id]
     #     mst(G.copy(), id)
     #     mds(G.copy(), id)
-    
+
     for id in inputs:
         G = inputs[id]
-        #random_mds(G.copy(), id)
+        random_mds(G.copy(), id)
         bfs(G.copy(), id)
     
     # write_finished_files()
@@ -73,11 +73,6 @@ def solve():
     #         G = inputs[id]
     #         bfs(G.copy(), id)
     #         random_mds(G.copy(), id)
-         
-
-# in the very beginning: read all inputs and all outputs (store them in networkx.Graph)
-
-# Graph 1
 
 # MST - Kruskal's + pruning- 1x
 # network.MDS + network.Steiner
@@ -110,17 +105,25 @@ def mds(G, id):
 
 def random_mds(G, id):
     dom_set = []
+    nodes = list(G.copy().nodes())
+    if (len(nodes) == 1):
+        dom_set = nodes
     edges = list(G.copy().edges())
     while edges:
         # Pick a random edge and random endpoint for that edge to add to dom_set
         edge = edges[np.random.randint(len(edges))]
         vertex = edge[np.random.randint(2)]
         dom_set.append(vertex)
-        edges = [edge for edge in edges if (edge[0] != vertex and edge[1] != vertex)]
+        remove_vertices = set()
+        iterated_edges = [edge for edge in edges if (edge[0] == vertex or edge[1] == vertex)]
+        for edge in iterated_edges:
+            remove_vertices.add(edge[0])
+            remove_vertices.add(edge[1])
+        edges = [edge for edge in edges if (edge[0] not in remove_vertices and edge[1] not in remove_vertices)]
     steiner_tree = approximation.steinertree.steiner_tree(G, dom_set)
     if steiner_tree.number_of_nodes() == 0 and steiner_tree.size() == 0: # steiner tree outputted empty graph
         graph = nx.Graph()
-        print(dom_set)
+        print(id)
         graph.add_node(dom_set.pop())
         update_best_graph(graph, id, 'random mds complete')
     else:
@@ -171,11 +174,11 @@ def update_best_graph(G, id, method):
         write_output_file(G, OUTPUT_PATH + filename + '.out')
         print(method)
 
-    # if not is_valid_network(inputs[id], G):
-    #     print("ERROR: " + id + ' ' + method + ' ')
+    if not is_valid_network(inputs[id], G):
+        print("ERROR: " + id + ' ' + method + ' ')
         
     if G.number_of_nodes() == 1: # put this in finished files
-        if id not in best_scores or (id in best_scores and best_scores[id] != 0):
+        if id not in finished_files:
             write_best_graph()
             best_scores[id] = 0
             finished_files.add(id)

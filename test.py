@@ -31,23 +31,30 @@ solver.setup(inputs, best_scores, best_methods, finished_files)
 
 def random_mds(G, id):
     dom_set = []
+    nodes = list(G.copy().nodes())
+    if (len(nodes) == 1):
+        dom_set = nodes
     edges = list(G.copy().edges())
+    print(nodes)
     while edges:
         # Pick a random edge and random endpoint for that edge to add to dom_set
         edge = edges[np.random.randint(len(edges))]
         vertex = edge[np.random.randint(2)]
         dom_set.append(vertex)
-        edges = [edge for edge in edges if (edge[0] != vertex and edge[1] != vertex)]
-        print(vertex)
-        print(edges)
-    #print(dom_set)
+        remove_vertices = set()
+        iterated_edges = [edge for edge in edges if (edge[0] == vertex or edge[1] == vertex)]
+        for edge in iterated_edges:
+            remove_vertices.add(edge[0])
+            remove_vertices.add(edge[1])
+        edges = [edge for edge in edges if (edge[0] not in remove_vertices and edge[1] not in remove_vertices)]
+    print(dom_set)
     steiner_tree = approximation.steinertree.steiner_tree(G, dom_set)
     return steiner_tree
 
 #print(inputs['small-252.in'])
-G = inputs['small-252.in']
+G = inputs['medium-52.in']
 for i in range(5):
-    T = random_mds(inputs['small-252.in'], 'small-252.in')
+    T = random_mds(G.copy(), 'medium-52.in')
     print(is_valid_network(G, T))
     # print(average_pairwise_distance_fast(T))
     # print(T.edges())
