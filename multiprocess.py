@@ -8,6 +8,7 @@ import sys
 import os
 import random
 import multiprocessing
+import time
 
 # global variables
 # dictionary that holds each id, input networkx.Graph
@@ -17,21 +18,23 @@ FINISHED_FILE_PATH = 'finished_files.txt'
 METHODS_PATH = '../methods.txt'
 
 manager = multiprocessing.Manager()
-inputs = manager.dict()
+inputs = {}#manager.dict()
 # dictionary that holds id, score
-best_scores = manager.dict()
-best_methods = manager.dict()
-max_weight = manager.dict()
-dummy = manager.dict()
+best_scores = {}#manager.dict()
+best_methods = {}#manager.dict()
+max_weight = {}#manager.dict()
+dummy = manager.list()
 
 finished_files = set()
 
 
-def setup(inputs, best_scores, best_methods, finished_files):
+def setup():
+
     finished_file = open(FINISHED_FILE_PATH, 'r')
     for file in finished_file:
         finished_files.add(file.split('\n')[0])
     for filename in os.listdir(INPUT_PATH):
+        #print(filename)
         out_filename = filename.split('.')[0] + '.out'
         if filename not in finished_files:
             inputs[filename] = read_input_file(INPUT_PATH + filename)
@@ -48,6 +51,8 @@ def setup(inputs, best_scores, best_methods, finished_files):
             else:
                 best_scores[filename] = float('inf')
 
+
+
 def solve():
     """
     Args:
@@ -58,7 +63,7 @@ def solve():
     """
 
     # TODO: your code here!
-    setup(inputs, best_scores, best_methods, finished_files)
+    setup()
 
     # run MST
     # for id in inputs:
@@ -67,6 +72,7 @@ def solve():
     #     mds(G.copy(), id)
     print("number of cpu: ", multiprocessing.cpu_count())
 
+    start = time.perf_counter()
     for i in range(1):
         print(i)
         processes = []
@@ -74,15 +80,25 @@ def solve():
             # G = inputs[id]
             # random_mds(G.copy(), id)
             # bfs(G.copy(), id)
-            p = multiprocessing.Process(target=random_mds, args=[inputs[id].copy(), id])
-            p.start()
-            processes.append(p)
+            '''
+            for i in range(multiprocessing.cpu_count()):
+                
+
+            '''
+            p1 = multiprocessing.Process(target=combined, args=[inputs[id].copy(), id])
+            #p2 = multiprocessing.Process(target=bfs, args=[G.copy(), id])
+            p1.start()
+            #p2.start()
+            processes.append(p1)
+            #processes.append(p2)
         for process in processes:
             process.join()
         write_best_methods()
-    
-    for id in dummy:
-        print(id)
+
+    finish = time.perf_counter()
+    print(f'time: {round(finish-start, 2)} seconds')
+
+    print(dummy)
 
     #write_finished_files()
     write_best_methods()
@@ -99,6 +115,10 @@ def solve():
 # network.MDS + network.Steiner
 # BFS + pruning - multiple
 # our MDS with steiner- multiple
+
+def combined(G, id):
+    bfs(G.copy(), id)
+    random_mds(G.copy(), id)
 
 def mst(G, id):
     T = nx.minimum_spanning_tree(G)
@@ -125,7 +145,7 @@ def mds(G, id):
         update_best_graph(steiner_tree, id, 'mds')
 
 def random_mds(G, id):
-    dummy[id] = id
+    dummy.append(id)
     def span(node, white_set):
         counter = 1
         for neighbor in G.neighbors(node):
@@ -278,4 +298,8 @@ if __name__ == '__main__':
     # assert is_valid_network(G, T)
     # print("Average  pairwise distance: {}".format(average_pairwise_distance(T)))
     # write_output_file(T, 'out/test.out')
+    setup()
+    for i in range(multiprocessing.cpu_count()):
+        inputs = [G for G in Graphs if i* 0< graph[id] <i*10]
+        mp = multiprocessing.Process(target=solve, args=[inputs, ids, ]
     solve()

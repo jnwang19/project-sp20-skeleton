@@ -8,6 +8,7 @@ import sys
 import os
 import random
 import multiprocessing
+import time
 
 # global variables
 # dictionary that holds each id, input networkx.Graph
@@ -64,8 +65,9 @@ def solve():
     #     mst(G.copy(), id)
     #     mds(G.copy(), id)
     print("number of cpu: ", multiprocessing.cpu_count())
-
-    for i in range(100):
+    #start = time.perf_counter()
+    i = 0
+    while(True):
         print(i)
         #processes = []
         for id in inputs:
@@ -77,9 +79,12 @@ def solve():
         #     processes.append(p)
         # for process in processes:
         #     process.join()
-        # write_best_methods()
+        i += 1
+        write_best_methods()
     
     #write_finished_files()
+    #finish = time.perf_counter()
+    #print(f'time: {round(finish-start, 2)} seconds')
     write_best_methods()
 
     # # run everything else
