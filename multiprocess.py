@@ -16,11 +16,13 @@ OUTPUT_PATH = '../outputs/'
 FINISHED_FILE_PATH = 'finished_files.txt'
 METHODS_PATH = '../methods.txt'
 
-inputs = {}
+manager = multiprocessing.Manager()
+inputs = manager.dict()
 # dictionary that holds id, score
-best_scores = {}
-best_methods = {}
-max_weight = {}
+best_scores = manager.dict()
+best_methods = manager.dict()
+max_weight = manager.dict()
+dummy = manager.dict()
 
 finished_files = set()
 
@@ -65,20 +67,23 @@ def solve():
     #     mds(G.copy(), id)
     print("number of cpu: ", multiprocessing.cpu_count())
 
-    for i in range(100):
+    for i in range(1):
         print(i)
-        #processes = []
+        processes = []
         for id in inputs:
-            G = inputs[id]
-            random_mds(G.copy(), id)
-            bfs(G.copy(), id)
-        #     p = multiprocessing.Process(target=bfs, args=[inputs[id].copy(), id])
-        #     p.start()
-        #     processes.append(p)
-        # for process in processes:
-        #     process.join()
-        # write_best_methods()
+            # G = inputs[id]
+            # random_mds(G.copy(), id)
+            # bfs(G.copy(), id)
+            p = multiprocessing.Process(target=random_mds, args=[inputs[id].copy(), id])
+            p.start()
+            processes.append(p)
+        for process in processes:
+            process.join()
+        write_best_methods()
     
+    for id in dummy:
+        print(id)
+
     #write_finished_files()
     write_best_methods()
 
@@ -120,6 +125,7 @@ def mds(G, id):
         update_best_graph(steiner_tree, id, 'mds')
 
 def random_mds(G, id):
+    dummy[id] = id
     def span(node, white_set):
         counter = 1
         for neighbor in G.neighbors(node):
