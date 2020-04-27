@@ -19,6 +19,7 @@ inputs = {}
 # dictionary that holds id, score
 best_scores = {}
 best_methods = {}
+max_weight = {}
 
 finished_files = set()
 
@@ -31,6 +32,10 @@ def setup(inputs, best_scores, best_methods, finished_files):
         out_filename = filename.split('.')[0] + '.out'
         if filename not in finished_files:
             inputs[filename] = read_input_file(INPUT_PATH + filename)
+            max_edge_weight = 0
+            for edge in inputs[filename].edges:
+                max_edge_weight = max(max_edge_weight, inputs[filename].get_edge_data(edge[0], edge[1])['weight'])
+            max_weight[filename] = max_edge_weight
             if os.path.isfile(OUTPUT_PATH + out_filename):
                 output_graph = read_output_file(OUTPUT_PATH + out_filename, inputs[filename])
                 if output_graph.number_of_nodes() == 1:
@@ -58,7 +63,7 @@ def solve():
     #     mst(G.copy(), id)
     #     mds(G.copy(), id)
 
-    for i in range(1000):
+    for i in range(50):
         print(i)
         for id in inputs:
             G = inputs[id]
@@ -138,6 +143,7 @@ def bfs(G, id):
     tree.add_nodes_from(nodes)
     visited = {i: False for i in nodes}
     source = np.random.choice(nodes, 1)[0]
+    maximum = max_weight[id]
 
     queue = deque()
     leaves = []
@@ -166,7 +172,12 @@ def bfs(G, id):
         tree = nx.Graph()
         tree.add_node(source)
     else:
-        tree.remove_nodes_from(leaves)
+        for l in leaves:
+            parent = list(tree.neighbors(l))[0]
+            p = 1 - ((tree[parent][l]['weight'])/maximum)
+            r = np.random.random()
+            if r < p:
+                tree.remove_node(l)
     update_best_graph(tree, id, 'bfs')
 
 # replaces the best graph if the current graph is better
@@ -177,8 +188,8 @@ def update_best_graph(G, id, method):
         write_output_file(G, OUTPUT_PATH + filename + '.out')
         print(method + ' ' + id)
 
-    # if not is_valid_network(inputs[id], G):
-    #     print("ERROR: " + id + ' ' + method + ' ')
+    if not is_valid_network(inputs[id], G):
+        print("ERROR: " + id + ' ' + method + ' ')
         
     if G.number_of_nodes() == 1: # put this in finished files
         if id not in finished_files:
