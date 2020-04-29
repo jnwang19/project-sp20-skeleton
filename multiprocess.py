@@ -301,5 +301,5 @@ if __name__ == '__main__':
     setup()
     for i in range(multiprocessing.cpu_count()):
         inputs = [G for G in Graphs if i* 0< graph[id] <i*10]
-        mp = multiprocessing.Process(target=solve, args=[inputs, ids, ]
+        mp = multiprocessing.Process(target=solve, args=[inputs, ids, best_scores, best_methods, ]
     solve()

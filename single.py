@@ -72,8 +72,8 @@ def solve():
         	print(i)
         #processes = []
         G = inputs['small-28.in']
-        random_mds(G.copy(), 'small-28.in')
-        #bfs(G.copy(), 'small-28.in')
+        #random_mds(G.copy(), 'small-28.in')
+        bfs(G.copy(), 'small-28.in')
         #random_edges(G, 'small-28.in')
         #random_weight(G.copy(), 'small-28.in')
         #     p = multiprocessing.Process(target=bfs, args=[inputs[id].copy(), id])
@@ -101,6 +101,19 @@ def solve():
 # network.MDS + network.Steiner
 # BFS + pruning - multiple
 # our MDS with steiner- multiple
+
+# def random_dom_set(G, id):
+#     T = nx.Graph()
+#     nodes = np.random.permutation(list(G.nodes))
+#     for node in nodes:
+#         T.add_node(node)
+#         if nx.is_dominating_set(G, T.nodes):
+#             break
+
+#     dom_set = list(T.nodes)
+#     random_node = np.random.choice(list(T.nodes))
+
+#     for node in 
 
 def random_edges(G, id):
     T = nx.Graph()
@@ -292,7 +305,7 @@ def bfs(G, id):
     maximum = max_weight[id]
 
     queue = deque()
-    leaves = []
+    leaves = deque()
 
     # Mark the source node as visited and enqueue it 
     queue.append(source) 
@@ -318,12 +331,33 @@ def bfs(G, id):
         tree = nx.Graph()
         tree.add_node(source)
     else:
-        for l in leaves:
+        score = average_pairwise_distance_fast(tree)
+
+        while leaves:
+            # p = 1 - ((tree[parent][l]['weight'])/maximum)
+            # r = np.random.random()
+            # if r < p:
+            #     tree.remove_node(l)
+            l = leaves.popleft()
             parent = list(tree.neighbors(l))[0]
-            p = 1 - ((tree[parent][l]['weight'])/maximum)
-            r = np.random.random()
-            if r < p:
-                tree.remove_node(l)
+            edge_weight = tree.get_edge_data(parent, l)['weight']
+            tree.remove_node(l)
+            if nx.is_dominating_set(G, tree.nodes):
+                new_score = average_pairwise_distance_fast(tree)
+                p = np.random.random()
+                if new_score > score and p > 0.6:
+                    tree.add_node(l)
+                    tree.add_edge(l, parent, weight=edge_weight)
+                else:
+                    score = new_score
+                    #append new leaves
+                    if tree.degree(parent) == 1:
+                        leaves.append(parent)
+            else:
+                tree.add_node(l)
+                tree.add_edge(l, parent, weight=edge_weight)
+
+    print(best_scores[id])
     update_best_graph(tree, id, 'bfs')
 
 # replaces the best graph if the current graph is better

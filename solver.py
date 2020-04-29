@@ -60,10 +60,10 @@ def solve():
     setup(inputs, best_scores, best_methods, finished_files)
 
     # run MST
-    # for id in inputs:
-    #     G = inputs[id]
-    #     mst(G.copy(), id)
-    #     mds(G.copy(), id)
+    for id in inputs:
+        G = inputs[id]
+        mst(G.copy(), id)
+        mds(G.copy(), id)
     print("number of cpu: ", multiprocessing.cpu_count())
     #start = time.perf_counter()
     i = 0
@@ -74,6 +74,8 @@ def solve():
             G = inputs[id]
             random_mds(G.copy(), id)
             bfs(G.copy(), id)
+            #mds(G.copy(), id)
+            #mst(G.copy(), id)
         #     p = multiprocessing.Process(target=bfs, args=[inputs[id].copy(), id])
         #     p.start()
         #     processes.append(p)
@@ -100,19 +102,55 @@ def solve():
 # BFS + pruning - multiple
 # our MDS with steiner- multiple
 
+def prune(T, G, leaves):
+    score = score = average_pairwise_distance_fast(T)
+
+    while leaves:
+        l = leaves.popleft()
+        parent = list(T.neighbors(l))[0]
+        edge_weight = T.get_edge_data(parent, l)['weight']
+        T.remove_node(l)
+        if nx.is_dominating_set(G, T.nodes):
+            new_score = average_pairwise_distance_fast(T)
+            if new_score > score:
+                T.add_node(l)
+                T.add_edge(l, parent, weight=edge_weight)
+            else:
+                score = new_score
+                #append new leaves
+                if T.degree(parent) == 1:
+                    leaves.append(parent)
+        else:
+            T.add_node(l)
+            T.add_edge(l, parent, weight=edge_weight)
+
+    return T
+
 def mst(G, id):
-    T = nx.minimum_spanning_tree(G)
+    T_k = nx.minimum_spanning_tree(G, algorithm = 'kruskal')
+    T_p = nx.minimum_spanning_tree(G, algorithm = 'prim')
+    T_b = nx.minimum_spanning_tree(G, algorithm = 'boruvka')
+    
+    leaves_k = find_leaves(T_k)
+    leaves_p = find_leaves(T_p)
+    leaves_b = find_leaves(T_b)
+
+    T_k = prune(T_k, G, leaves_k)
+    T_p = prune(T_p, G, leaves_p)
+    T_b = prune(T_b, G, leaves_b)
+
+    update_best_graph(T_k, id, 'mst')
+    update_best_graph(T_p, id, 'mst')
+    update_best_graph(T_b, id, 'mst')
+
+def find_leaves(T):
     num_nodes = T.number_of_nodes()
-    leaves = []
+    leaves = deque()
     for v in T:
         neighbors = T[v]
         if len(neighbors) == 1 and len(leaves) + 1 < num_nodes:
             leaves.append(v)
-    # probabilites
-    # if len(leaves) == num_nodes:
-
-    T.remove_nodes_from(leaves)
-    update_best_graph(T, id, 'mst')
+    return leaves
 
 def mds(G, id):
     min_set = approximation.dominating_set.min_weighted_dominating_set(G)
@@ -122,7 +160,9 @@ def mds(G, id):
         graph.add_node(min_set.pop())
         update_best_graph(graph, id, 'mds complete')
     else:
-        update_best_graph(steiner_tree, id, 'mds')
+        leaves = find_leaves(steiner_tree)
+        T = prune(steiner_tree.copy(), G, leaves)
+        update_best_graph(T, id, 'mds')
 
 def random_mds(G, id):
     def span(node, white_set):
@@ -165,7 +205,9 @@ def random_mds(G, id):
         graph.add_node(black.pop())
         update_best_graph(graph, id, 'random mds complete')
     else:
-        update_best_graph(steiner_tree, id, 'random mds')
+        leaves = find_leaves(steiner_tree)
+        T = prune(steiner_tree.copy(), G, leaves)
+        update_best_graph(T, id, 'random mds')
 
 def bfs(G, id):
     tree = nx.Graph()
@@ -176,7 +218,7 @@ def bfs(G, id):
     maximum = max_weight[id]
 
     queue = deque()
-    leaves = []
+    leaves = deque()
 
     # Mark the source node as visited and enqueue it 
     queue.append(source) 
@@ -202,12 +244,31 @@ def bfs(G, id):
         tree = nx.Graph()
         tree.add_node(source)
     else:
-        for l in leaves:
+        score = average_pairwise_distance_fast(tree)
+
+        while leaves:
+            # p = 1 - ((tree[parent][l]['weight'])/maximum)
+            # r = np.random.random()
+            # if r < p:
+            #     tree.remove_node(l)
+            l = leaves.popleft()
             parent = list(tree.neighbors(l))[0]
-            p = 1 - ((tree[parent][l]['weight'])/maximum)
-            r = np.random.random()
-            if r < p:
-                tree.remove_node(l)
+            edge_weight = tree.get_edge_data(parent, l)['weight']
+            tree.remove_node(l)
+            if nx.is_dominating_set(G, tree.nodes):
+                new_score = average_pairwise_distance_fast(tree)
+                if new_score > score:
+                    tree.add_node(l)
+                    tree.add_edge(l, parent, weight=edge_weight)
+                else:
+                    score = new_score
+                    #append new leaves
+                    if tree.degree(parent) == 1:
+                        leaves.append(parent)
+            else:
+                tree.add_node(l)
+                tree.add_edge(l, parent, weight=edge_weight)
+
     update_best_graph(tree, id, 'bfs')
 
 # replaces the best graph if the current graph is better
@@ -228,7 +289,7 @@ def update_best_graph(G, id, method):
             best_methods[id] = method
     else:
         current_score = average_pairwise_distance_fast(G)
-        if current_score < best_scores[id]:
+        if current_score < best_scores[id]# and is_valid_network(inputs[id], G):
             write_best_graph()
             best_scores[id] = current_score
             best_methods[id] = method
