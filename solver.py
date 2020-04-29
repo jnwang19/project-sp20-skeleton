@@ -72,8 +72,9 @@ def solve():
         #processes = []
         for id in inputs:
             G = inputs[id]
-            random_mds(G.copy(), id)
-            bfs(G.copy(), id)
+            #random_mds(G.copy(), id)
+            #bfs(G.copy(), id)
+            random_dom_set(G.copy(), id)
             #mds(G.copy(), id)
             #mst(G.copy(), id)
         #     p = multiprocessing.Process(target=bfs, args=[inputs[id].copy(), id])
@@ -101,9 +102,33 @@ def solve():
 # network.MDS + network.Steiner
 # BFS + pruning - multiple
 # our MDS with steiner- multiple
+def random_dom_set(G, id):
+    T = nx.Graph()
+    nodes = np.random.permutation(list(G.nodes))
+    for node in nodes:
+        T.add_node(node)
+        if nx.is_dominating_set(G, T.nodes):
+            break
 
+    center = np.random.choice(list(T.nodes))
+
+    shortest_paths = nx.shortest_path(G)
+    #print(shortest_paths)
+    for node in list(T.nodes):
+        v = center
+        for w in shortest_paths[center][node]:
+            #print(v, w)
+            if v != w:
+                T.add_edge(v, w, weight=G.get_edge_data(v, w)['weight'])
+                v = w
+
+    leaves = find_leaves(T)
+    T = prune(T, G, leaves)
+    #print(average_pairwise_distance_fast(T))
+    update_best_graph(T, id, 'dijkstra')
+    
 def prune(T, G, leaves):
-    score = score = average_pairwise_distance_fast(T)
+    score = average_pairwise_distance_fast(T)
 
     while leaves:
         l = leaves.popleft()
@@ -278,8 +303,8 @@ def update_best_graph(G, id, method):
         write_output_file(G, OUTPUT_PATH + filename + '.out')
         print(method + ' ' + id)
 
-    # if not is_valid_network(inputs[id], G):
-    #     print("ERROR: " + id + ' ' + method + ' ')
+    if not is_valid_network(inputs[id], G):
+        print("ERROR: " + id + ' ' + method + ' ')
         
     if G.number_of_nodes() == 1: # put this in finished files
         if id not in finished_files:
@@ -289,8 +314,9 @@ def update_best_graph(G, id, method):
             best_methods[id] = method
     else:
         current_score = average_pairwise_distance_fast(G)
-        if current_score < best_scores[id]:# and is_valid_network(inputs[id], G):
+        if current_score < best_scores[id] and is_valid_network(inputs[id], G):
             write_best_graph()
+            print(best_scores[id] - current_score)
             best_scores[id] = current_score
             best_methods[id] = method
     

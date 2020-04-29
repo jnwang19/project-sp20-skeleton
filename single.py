@@ -9,6 +9,7 @@ import os
 import random
 import multiprocessing
 import time
+from itertools import combinations
 
 # global variables
 # dictionary that holds each id, input networkx.Graph
@@ -72,8 +73,10 @@ def solve():
         	print(i)
         #processes = []
         G = inputs['small-28.in']
+        random_dom_set(G.copy(), 'small-28.in')
+        #brute_force(G.copy(), 'small-28.in')
         #random_mds(G.copy(), 'small-28.in')
-        bfs(G.copy(), 'small-28.in')
+        #bfs(G.copy(), 'small-28.in')
         #random_edges(G, 'small-28.in')
         #random_weight(G.copy(), 'small-28.in')
         #     p = multiprocessing.Process(target=bfs, args=[inputs[id].copy(), id])
@@ -102,18 +105,80 @@ def solve():
 # BFS + pruning - multiple
 # our MDS with steiner- multiple
 
-# def random_dom_set(G, id):
-#     T = nx.Graph()
-#     nodes = np.random.permutation(list(G.nodes))
-#     for node in nodes:
-#         T.add_node(node)
-#         if nx.is_dominating_set(G, T.nodes):
-#             break
+def random_dom_set(G, id):
+    T = nx.Graph()
+    nodes = np.random.permutation(list(G.nodes))
+    for node in nodes:
+        T.add_node(node)
+        if nx.is_dominating_set(G, T.nodes):
+            break
 
-#     dom_set = list(T.nodes)
-#     random_node = np.random.choice(list(T.nodes))
+    center = np.random.choice(list(T.nodes))
 
-#     for node in 
+    shortest_paths = nx.shortest_path(G)
+    #print(shortest_paths)
+    for node in list(T.nodes):
+        v = center
+        for w in shortest_paths[center][node]:
+            #print(v, w)
+            if v != w:
+                T.add_edge(v, w, weight=G.get_edge_data(v, w)['weight'])
+                v = w
+
+    leaves = find_leaves(T)
+    T = prune(T, G, leaves)
+    #print(average_pairwise_distance_fast(T))
+    update_best_graph(T, id, 'dijkstra')
+
+
+def find_leaves(T):
+    num_nodes = T.number_of_nodes()
+    leaves = deque()
+    for v in T:
+        neighbors = T[v]
+        if len(neighbors) == 1 and len(leaves) + 1 < num_nodes:
+            leaves.append(v)
+    return leaves
+
+def prune(T, G, leaves):
+    score = score = average_pairwise_distance_fast(T)
+
+    while leaves:
+        l = leaves.popleft()
+        parent = list(T.neighbors(l))[0]
+        edge_weight = T.get_edge_data(parent, l)['weight']
+        T.remove_node(l)
+        if nx.is_dominating_set(G, T.nodes):
+            new_score = average_pairwise_distance_fast(T)
+            if new_score > score:
+                T.add_node(l)
+                T.add_edge(l, parent, weight=edge_weight)
+            else:
+                score = new_score
+                #append new leaves
+                if T.degree(parent) == 1:
+                    leaves.append(parent)
+        else:
+            T.add_node(l)
+            T.add_edge(l, parent, weight=edge_weight)
+
+    return T
+
+
+def brute_force(G, id):
+    edges = list(G.edges)
+    for i in range(1, len(edges)):
+        print(i)
+        lst = list(combinations(edges, i))
+        print(len(lst))
+        for edge_group in lst:
+            T = nx.Graph()
+            for edge in edge_group:
+                T.add_edge(edge[0], edge[1], weight=G.get_edge_data(edge[0], edge[1])['weight'])
+            if is_valid_network(G, T) and average_pairwise_distance_fast(T) < best_scores[id]:
+                print(average_pairwise_distance_fast(T))
+                update_best_graph(T, id, 'brute_force')
+
 
 def random_edges(G, id):
     T = nx.Graph()
