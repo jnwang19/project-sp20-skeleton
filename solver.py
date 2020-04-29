@@ -289,7 +289,7 @@ def update_best_graph(G, id, method):
             best_methods[id] = method
     else:
         current_score = average_pairwise_distance_fast(G)
-        if current_score < best_scores[id]# and is_valid_network(inputs[id], G):
+        if current_score < best_scores[id]:# and is_valid_network(inputs[id], G):
             write_best_graph()
             best_scores[id] = current_score
             best_methods[id] = method
