@@ -13,7 +13,7 @@ import time
 # global variables
 # dictionary that holds each id, input networkx.Graph
 INPUT_PATH = '../inputs/'
-OUTPUT_PATH = '../outputs/'
+OUTPUT_PATH = '../outputs-small-28/'
 FINISHED_FILE_PATH = 'finished_files.txt'
 METHODS_PATH = '../methods.txt'
 
@@ -68,12 +68,14 @@ def solve():
     #start = time.perf_counter()
     i = 0
     while(True):
-        print(i)
+        if i % 1000 == 0:
+        	print(i)
         #processes = []
-        for id in inputs:
-            G = inputs[id]
-            random_mds(G.copy(), id)
-            bfs(G.copy(), id)
+        G = inputs['small-28.in']
+        random_mds(G.copy(), 'small-28.in')
+        #bfs(G.copy(), 'small-28.in')
+        #random_edges(G, 'small-28.in')
+        #random_weight(G.copy(), 'small-28.in')
         #     p = multiprocessing.Process(target=bfs, args=[inputs[id].copy(), id])
         #     p.start()
         #     processes.append(p)
@@ -99,6 +101,81 @@ def solve():
 # network.MDS + network.Steiner
 # BFS + pruning - multiple
 # our MDS with steiner- multiple
+
+def random_edges(G, id):
+    T = nx.Graph()
+    edges = list(np.random.permutation(G.edges))
+    for edge in edges:
+        T.add_edge(edge[0], edge[1], weight=G.get_edge_data(edge[0], edge[1])['weight'])
+        if not nx.is_tree(T):
+            T.remove_edge(edge[0], edge[1])
+        if is_valid_network(G, T):
+            score = average_pairwise_distance_fast(T)
+            print(score - best_scores[id])
+            update_best_graph(T, id, 'random edges')
+            break
+
+def random_weight(G, id):
+    T = nx.Graph()
+    nodes = list(G.nodes)
+    v = np.random.choice(nodes, 1)[0]
+    T.add_node(v)
+    all_neighbors = set()
+    count = 0
+    flag = True
+    while not is_valid_network(G, T):
+        #print(count)
+        if flag:
+            neighbors = []
+            for node in T:
+                for w in G.neighbors(v):
+                    if w not in T:
+                        neighbors.append((node, w, 100 - G[v][w]['weight']))
+            for n in neighbors:
+                all_neighbors.add(n)
+
+        total = sum([weight for u, w, weight in all_neighbors])
+        dist = [weight / total for u, w, weight in all_neighbors]
+        neighbor_edges = [(u, w, weight) for u, w, weight in all_neighbors]
+        
+        #print(dist)
+        next_edge = neighbor_edges[np.random.choice(range(len(neighbor_edges)), p=dist)]
+        T.add_edge(next_edge[0], next_edge[1], weight=next_edge[2])
+
+        if nx.is_tree(T):
+            v = next_edge[1]
+            flag = True
+        else:
+            T.remove_edge(next_edge[0], next_edge[1])
+            all_neighbors.remove(next_edge)
+            flag = False
+
+        count += 1
+        if T.number_of_nodes() == G.number_of_nodes():
+            print('no')
+            break
+    
+    score = average_pairwise_distance_fast(T)
+
+    T_copy = T.copy()
+    for v in T:
+        for w in G.neighbors(v):
+            if w not in G:
+                T_copy.add_edge(v, w, G.get_edge_data(v, w)['weight'])
+                new_score = average_pairwise_distance_fast(T_copy)
+                if new_score > score:
+                    T_copy.remove_edge(v, w)
+                else:
+                    score = new_score
+                    print('good')
+
+    #print(score - best_scores[id])
+
+    update_best_graph(T, id, 'random weight')
+    
+
+
+
 
 def mst(G, id):
     T = nx.minimum_spanning_tree(G)
@@ -133,6 +210,7 @@ def random_mds(G, id):
         return counter
 
     nodes = list(G.copy().nodes())
+    random.shuffle(nodes)
     #The priority for node i is denoted by rand_tiebreakers[i]
     rand_tiebreakers = nodes.copy()
     random.shuffle(rand_tiebreakers)
@@ -158,7 +236,42 @@ def random_mds(G, id):
                     gray.add(neighbor)
                     white.remove(neighbor)
             black.append(max_node)
+
+    print(sorted(black))
     steiner_tree = approximation.steinertree.steiner_tree(G, black)
+
+    # steiner_tree = steiner_tree.copy()
+    # for node in steiner_tree:
+    #     neighbors = list(steiner_tree.neighbors(node))
+    #    # print(neighbors)
+    #     if len(neighbors) == 1:
+    #         v = neighbors[0]
+    #         weight = G.get_edge_data(node, v)['weight']
+    #         steiner_tree.remove_edge(node, v)
+    #         if not is_valid_network(steiner_tree, G):
+    #             steiner_tree.add_edge(node, v, weight=weight)
+    #         else:
+    #             print('good')
+
+    score = average_pairwise_distance_fast(steiner_tree)
+
+    T_copy = steiner_tree.copy()
+    #print(list(T_copy))
+    for v in list(T_copy):
+        for w in G.neighbors(v):
+            if w not in T_copy:
+                T_copy.add_edge(v, w, weight=G.get_edge_data(v, w)['weight'])
+                new_score = average_pairwise_distance_fast(T_copy)
+                if new_score > score:
+                    T_copy.remove_edge(v, w)
+                    T_copy.remove_node(w)
+                else:
+                    score = new_score
+                    #print('good')
+
+    #print(score - best_scores[id])
+    steiner_tree = T_copy
+
     if steiner_tree.number_of_nodes() == 0 and steiner_tree.size() == 0: # steiner tree outputted empty graph
         graph = nx.Graph()
         print(id)
@@ -166,6 +279,9 @@ def random_mds(G, id):
         update_best_graph(graph, id, 'random mds complete')
     else:
         update_best_graph(steiner_tree, id, 'random mds')
+
+
+    
 
 def bfs(G, id):
     tree = nx.Graph()
