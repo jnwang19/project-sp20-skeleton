@@ -22,6 +22,7 @@ inputs = {}
 best_scores = {}
 best_methods = {}
 max_weight = {}
+shortest_paths = {}
 
 finished_files = set()
 
@@ -34,6 +35,7 @@ def setup(inputs, best_scores, best_methods, finished_files):
         out_filename = filename.split('.')[0] + '.out'
         if filename not in finished_files:
             inputs[filename] = read_input_file(INPUT_PATH + filename)
+            shortest_paths[filename] = nx.shortest_path(inputs[filename])
             max_edge_weight = 0
             for edge in inputs[filename].edges:
                 max_edge_weight = max(max_edge_weight, inputs[filename].get_edge_data(edge[0], edge[1])['weight'])
@@ -112,11 +114,10 @@ def random_dom_set(G, id):
 
     center = np.random.choice(list(T.nodes))
 
-    shortest_paths = nx.shortest_path(G)
     #print(shortest_paths)
     for node in list(T.nodes):
         v = center
-        for w in shortest_paths[center][node]:
+        for w in shortest_paths[id][center][node]:
             #print(v, w)
             if v != w:
                 T.add_edge(v, w, weight=G.get_edge_data(v, w)['weight'])
