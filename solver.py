@@ -62,10 +62,10 @@ def solve():
     setup(inputs, best_scores, best_methods, finished_files)
 
     # run MST
-    for id in inputs:
-        G = inputs[id]
-        mst(G.copy(), id)
-        mds(G.copy(), id)
+    # for id in inputs:
+    #     G = inputs[id]
+    #     mst(G.copy(), id)
+    #     mds(G.copy(), id)
     print("number of cpu: ", multiprocessing.cpu_count())
     #start = time.perf_counter()
     i = 0
@@ -74,8 +74,10 @@ def solve():
         #processes = []
         for id in inputs:
             G = inputs[id]
-            #random_mds(G.copy(), id)
-            #bfs(G.copy(), id)
+            mst(G.copy(), id)
+            mds(G.copy(), id)
+            random_mds(G.copy(), id)
+            bfs(G.copy(), id)
             random_dom_set(G.copy(), id)
             #mds(G.copy(), id)
             #mst(G.copy(), id)
@@ -138,7 +140,8 @@ def prune(T, G, leaves):
         T.remove_node(l)
         if nx.is_dominating_set(G, T.nodes):
             new_score = average_pairwise_distance_fast(T)
-            if new_score > score:
+            p = np.random.random()
+            if new_score > score and p > 0.7:
                 T.add_node(l)
                 T.add_edge(l, parent, weight=edge_weight)
             else:
@@ -172,7 +175,8 @@ def mst(G, id):
 def find_leaves(T):
     num_nodes = T.number_of_nodes()
     leaves = deque()
-    for v in T:
+    randomized_nodes = np.random.permutation(list(T.nodes))
+    for v in randomized_nodes:
         neighbors = T[v]
         if len(neighbors) == 1 and len(leaves) + 1 < num_nodes:
             leaves.append(v)
@@ -270,30 +274,7 @@ def bfs(G, id):
         tree = nx.Graph()
         tree.add_node(source)
     else:
-        score = average_pairwise_distance_fast(tree)
-
-        while leaves:
-            # p = 1 - ((tree[parent][l]['weight'])/maximum)
-            # r = np.random.random()
-            # if r < p:
-            #     tree.remove_node(l)
-            l = leaves.popleft()
-            parent = list(tree.neighbors(l))[0]
-            edge_weight = tree.get_edge_data(parent, l)['weight']
-            tree.remove_node(l)
-            if nx.is_dominating_set(G, tree.nodes):
-                new_score = average_pairwise_distance_fast(tree)
-                if new_score > score:
-                    tree.add_node(l)
-                    tree.add_edge(l, parent, weight=edge_weight)
-                else:
-                    score = new_score
-                    #append new leaves
-                    if tree.degree(parent) == 1:
-                        leaves.append(parent)
-            else:
-                tree.add_node(l)
-                tree.add_edge(l, parent, weight=edge_weight)
+        tree = prune(tree, G, leaves)
 
     update_best_graph(tree, id, 'bfs')
 
