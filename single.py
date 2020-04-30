@@ -72,8 +72,10 @@ def solve():
         if i % 1000 == 0:
         	print(i)
         #processes = []
-        G = inputs['small-28.in']
-        random_dom_set(G.copy(), 'small-28.in')
+        G = inputs['medium-218.in']
+        mds(G.copy(), 'medium-218.in')
+        #mst(G.copy(), 'small-28.in')
+        #random_dom_set(G.copy(), 'small-28.in')
         #brute_force(G.copy(), 'small-28.in')
         #random_mds(G.copy(), 'small-28.in')
         #bfs(G.copy(), 'small-28.in')
@@ -162,6 +164,8 @@ def prune(T, G, leaves):
             T.add_node(l)
             T.add_edge(l, parent, weight=edge_weight)
 
+    #print('hello')
+    #print(nx.is_tree(T))
     return T
 
 
@@ -256,27 +260,41 @@ def random_weight(G, id):
 
 
 def mst(G, id):
-    T = nx.minimum_spanning_tree(G)
-    num_nodes = T.number_of_nodes()
-    leaves = []
-    for v in T:
-        neighbors = T[v]
-        if len(neighbors) == 1 and len(leaves) + 1 < num_nodes:
-            leaves.append(v)
-    # probabilites
-    # if len(leaves) == num_nodes:
+    T_k = nx.minimum_spanning_tree(G, algorithm = 'kruskal')
+    T_p = nx.minimum_spanning_tree(G, algorithm = 'prim')
+    T_b = nx.minimum_spanning_tree(G, algorithm = 'boruvka')
+    
+    print('k')
+    print(sorted(T_k.edges))
+    print('p')
+    print(sorted(T_p.edges))
+    print('b')
+    print(sorted(T_b.edges))
 
-    T.remove_nodes_from(leaves)
-    update_best_graph(T, id, 'mst')
+    leaves_k = find_leaves(T_k)
+    leaves_p = find_leaves(T_p)
+    leaves_b = find_leaves(T_b)
+
+    T_k = prune(T_k, G, leaves_k)
+    T_p = prune(T_p, G, leaves_p)
+    T_b = prune(T_b, G, leaves_b)
+
+    update_best_graph(T_k, id, 'mst')
+    update_best_graph(T_p, id, 'mst')
+    update_best_graph(T_b, id, 'mst')
 
 def mds(G, id):
-    min_set = approximation.dominating_set.min_weighted_dominating_set(G)
-    steiner_tree = approximation.steinertree.steiner_tree(G, min_set)
+    min_set = approximation.dominating_set.min_weighted_dominating_set(G.copy())
+    print(min_set)
+    steiner_tree = approximation.steinertree.steiner_tree(G.copy(), min_set)
+    print(nx.find_cycle(steiner_tree))
     if steiner_tree.number_of_nodes() == 0 and steiner_tree.size() == 0: # steiner tree outputted empty graph
         graph = nx.Graph()
         graph.add_node(min_set.pop())
         update_best_graph(graph, id, 'mds complete')
     else:
+        #print(steiner_tree.nodes)
+        
         update_best_graph(steiner_tree, id, 'mds')
 
 def random_mds(G, id):
@@ -315,7 +333,7 @@ def random_mds(G, id):
                     white.remove(neighbor)
             black.append(max_node)
 
-    print(sorted(black))
+    #print(sorted(black))
     steiner_tree = approximation.steinertree.steiner_tree(G, black)
 
     # steiner_tree = steiner_tree.copy()
@@ -432,8 +450,9 @@ def update_best_graph(G, id, method):
         write_output_file(G, OUTPUT_PATH + filename + '.out')
         print(method + ' ' + id)
 
-    # if not is_valid_network(inputs[id], G):
-    #     print("ERROR: " + id + ' ' + method + ' ')
+    if not is_valid_network(inputs[id], G):
+        print("ERROR: " + id + ' ' + method + ' ')
+        #print(nx.is_tree(inputs[id]))
         
     if G.number_of_nodes() == 1: # put this in finished files
         if id not in finished_files:
@@ -443,7 +462,7 @@ def update_best_graph(G, id, method):
             best_methods[id] = method
     else:
         current_score = average_pairwise_distance_fast(G)
-        if current_score < best_scores[id]:
+        if current_score < best_scores[id] and is_valid_network(inputs[id], G):
             write_best_graph()
             best_scores[id] = current_score
             best_methods[id] = method
