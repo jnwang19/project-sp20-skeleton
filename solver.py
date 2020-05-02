@@ -23,6 +23,11 @@ best_scores = {}
 best_methods = {}
 max_weight = {}
 shortest_paths = {}
+t_k = {}
+t_p = {}
+t_b = {}
+t_mds = {}
+
 
 finished_files = set()
 
@@ -36,6 +41,15 @@ def setup(inputs, best_scores, best_methods, finished_files):
         if filename not in finished_files:
             inputs[filename] = read_input_file(INPUT_PATH + filename)
             shortest_paths[filename] = nx.shortest_path(inputs[filename])
+
+            t_k[filename] = nx.minimum_spanning_tree(inputs[filename], algorithm = 'kruskal')
+            t_p[filename] = nx.minimum_spanning_tree(inputs[filename], algorithm = 'prim')
+            t_b[filename] = nx.minimum_spanning_tree(inputs[filename], algorithm = 'boruvka')
+
+            min_set = approximation.dominating_set.min_weighted_dominating_set(inputs[filename])
+            steiner_tree = approximation.steinertree.steiner_tree(inputs[filename], min_set)
+            t_mds[filename] = steiner_tree
+
             max_edge_weight = 0
             for edge in inputs[filename].edges:
                 max_edge_weight = max(max_edge_weight, inputs[filename].get_edge_data(edge[0], edge[1])['weight'])
@@ -156,9 +170,13 @@ def prune(T, G, leaves):
     return T
 
 def mst(G, id):
-    T_k = nx.minimum_spanning_tree(G, algorithm = 'kruskal')
-    T_p = nx.minimum_spanning_tree(G, algorithm = 'prim')
-    T_b = nx.minimum_spanning_tree(G, algorithm = 'boruvka')
+    # T_k = nx.minimum_spanning_tree(G, algorithm = 'kruskal')
+    # T_p = nx.minimum_spanning_tree(G, algorithm = 'prim')
+    # T_b = nx.minimum_spanning_tree(G, algorithm = 'boruvka')
+
+    T_k = t_k[id].copy()
+    T_p = t_p[id].copy()
+    T_b = t_b[id].copy()
     
     leaves_k = find_leaves(T_k)
     leaves_p = find_leaves(T_p)
@@ -183,8 +201,11 @@ def find_leaves(T):
     return leaves
 
 def mds(G, id):
-    min_set = approximation.dominating_set.min_weighted_dominating_set(G)
-    steiner_tree = approximation.steinertree.steiner_tree(G, min_set)
+    # min_set = approximation.dominating_set.min_weighted_dominating_set(G)
+    # steiner_tree = approximation.steinertree.steiner_tree(G, min_set)
+
+    steiner_tree = t_mds[id]
+
     if steiner_tree.number_of_nodes() == 0 and steiner_tree.size() == 0: # steiner tree outputted empty graph
         graph = nx.Graph()
         graph.add_node(min_set.pop())
@@ -287,6 +308,8 @@ def update_best_graph(G, id, method):
 
     if not is_valid_network(inputs[id], G):
         print("ERROR: " + id + ' ' + method + ' ')
+        print('is dom set: ' + str(nx.is_dominating_set(inputs[id], G.nodes)))
+        print('is tree: ' + str(nx.is_tree(G)))
         
     if G.number_of_nodes() == 1: # put this in finished files
         if id not in finished_files:

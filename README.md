@@ -1,13 +1,6 @@
 # CS 170 Project Spring 2020
 
-Take a look at the project spec before you get started!
+Create a folder just outside this current folder called 'outputs'. This will be what stores the outputs generated from the code. Include all the inputs in a folder called 'inputs' in the same location as 'outputs'.
 
-Files:
-- `parse.py`: functions to read/write inputs and outputs
-- `solver.py`: where you should be writing your code to solve inputs
-- `utils.py`: contains functions to compute cost and validate NetworkX graphs
-
-When writing inputs/outputs:
-- Make sure you use the functions `write_input_file` and `write_output_file` provided
-- Run the functions `read_input_file` and `read_output_file` to validate your files before submitting!
-  - These are the functions run by the autograder to validate submissions
+Then, from within this current folder, run the command: python3 solver.py
+This is our python script that will run all of the algorithms described in our project reflection.
