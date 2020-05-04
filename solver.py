@@ -89,8 +89,8 @@ def solve():
         for id in inputs:
             G = inputs[id]
             mst(G.copy(), id)
-            mds(G.copy(), id)
-            random_mds(G.copy(), id)
+            #mds(G.copy(), id)
+            #random_mds(G.copy(), id)
             bfs(G.copy(), id)
             random_dom_set(G.copy(), id)
             #mds(G.copy(), id)
@@ -155,7 +155,7 @@ def prune(T, G, leaves):
         if nx.is_dominating_set(G, T.nodes):
             new_score = average_pairwise_distance_fast(T)
             p = np.random.random()
-            if new_score > score and p > 0.7:
+            if new_score > score and p > 0.5:
                 T.add_node(l)
                 T.add_edge(l, parent, weight=edge_weight)
             else:
@@ -308,8 +308,8 @@ def update_best_graph(G, id, method):
 
     if not is_valid_network(inputs[id], G):
         print("ERROR: " + id + ' ' + method + ' ')
-        print('is dom set: ' + str(nx.is_dominating_set(inputs[id], G.nodes)))
-        print('is tree: ' + str(nx.is_tree(G)))
+        # print('is dom set: ' + str(nx.is_dominating_set(inputs[id], G.nodes)))
+        # print('is tree: ' + str(nx.is_tree(G)))
         
     if G.number_of_nodes() == 1: # put this in finished files
         if id not in finished_files:

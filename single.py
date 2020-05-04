@@ -70,15 +70,16 @@ def solve():
     i = 0
     while(True):
         if i % 1000 == 0:
-        	print(i)
+            print(i)
+            print(best_scores['small-82.in'])
         #processes = []
-        G = inputs['medium-218.in']
-        mds(G.copy(), 'medium-218.in')
-        #mst(G.copy(), 'small-28.in')
-        #random_dom_set(G.copy(), 'small-28.in')
+        G = inputs['small-82.in']
+        #mds(G.copy(), 'small-82.in')
+        #mst(G.copy(), 'small-82.in')
+        random_dom_set(G.copy(), 'small-82.in')
         #brute_force(G.copy(), 'small-28.in')
-        #random_mds(G.copy(), 'small-28.in')
-        #bfs(G.copy(), 'small-28.in')
+        #random_mds(G.copy(), 'small-82.in')
+        bfs(G.copy(), 'small-82.in')
         #random_edges(G, 'small-28.in')
         #random_weight(G.copy(), 'small-28.in')
         #     p = multiprocessing.Process(target=bfs, args=[inputs[id].copy(), id])
@@ -152,7 +153,8 @@ def prune(T, G, leaves):
         T.remove_node(l)
         if nx.is_dominating_set(G, T.nodes):
             new_score = average_pairwise_distance_fast(T)
-            if new_score > score:
+            p = np.random.random()
+            if new_score > score and p <0.5:
                 T.add_node(l)
                 T.add_edge(l, parent, weight=edge_weight)
             else:
@@ -263,13 +265,6 @@ def mst(G, id):
     T_k = nx.minimum_spanning_tree(G, algorithm = 'kruskal')
     T_p = nx.minimum_spanning_tree(G, algorithm = 'prim')
     T_b = nx.minimum_spanning_tree(G, algorithm = 'boruvka')
-    
-    print('k')
-    print(sorted(T_k.edges))
-    print('p')
-    print(sorted(T_p.edges))
-    print('b')
-    print(sorted(T_b.edges))
 
     leaves_k = find_leaves(T_k)
     leaves_p = find_leaves(T_p)
@@ -285,9 +280,7 @@ def mst(G, id):
 
 def mds(G, id):
     min_set = approximation.dominating_set.min_weighted_dominating_set(G.copy())
-    print(min_set)
     steiner_tree = approximation.steinertree.steiner_tree(G.copy(), min_set)
-    print(nx.find_cycle(steiner_tree))
     if steiner_tree.number_of_nodes() == 0 and steiner_tree.size() == 0: # steiner tree outputted empty graph
         graph = nx.Graph()
         graph.add_node(min_set.pop())
@@ -440,7 +433,7 @@ def bfs(G, id):
                 tree.add_node(l)
                 tree.add_edge(l, parent, weight=edge_weight)
 
-    print(best_scores[id])
+    #print(best_scores[id])
     update_best_graph(tree, id, 'bfs')
 
 # replaces the best graph if the current graph is better
